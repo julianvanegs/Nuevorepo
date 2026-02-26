@@ -1,1 +1,691 @@
+<!DOCTYPE html>
+<html lang="es" x-data="cosmos()" x-init="init()">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>COSMOS — Beyond The Horizon</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
+<style>
+:root {
+  --bg:      #08090d;
+  --surface: #0f1016;
+  --border:  rgba(255,255,255,0.07);
+  --text:    #e8e4d9;
+  --muted:   #5a5c6e;
+  --accent:  #c8a96e;
+  --red:     #b84433;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{height:100%;-webkit-text-size-adjust:100%}
+body{
+  width:100%;height:100dvh;overflow:hidden;
+  background:var(--bg);color:var(--text);
+  cursor:none;-webkit-font-smoothing:antialiased;
+}
+@media(hover:none){body{cursor:auto}}
+::-webkit-scrollbar{display:none}
+
+/* FONTS */
+.f-display{font-family:'Syne',sans-serif;font-weight:800}
+.f-serif{font-family:'Cormorant Garamond',serif}
+.f-ui{font-family:'Syne',sans-serif;font-weight:500}
+.f-label{font-family:'Syne',sans-serif;font-weight:400;letter-spacing:.14em;text-transform:uppercase;font-size:.65rem}
+
+/* CURSOR */
+#cur,#cur-dot{
+  position:fixed;top:0;left:0;pointer-events:none;z-index:9999;
+  transform:translate(-50%,-50%);border-radius:50%;
+}
+#cur{
+  width:34px;height:34px;border:1px solid rgba(200,169,110,.45);
+  transition:width .4s cubic-bezier(.16,1,.3,1),height .4s cubic-bezier(.16,1,.3,1),
+             border-color .3s ease,opacity .3s ease;
+}
+#cur.grow{width:58px;height:58px;border-color:var(--accent)}
+#cur.hide{opacity:0}
+#cur-dot{width:5px;height:5px;background:var(--accent)}
+@media(hover:none){#cur,#cur-dot{display:none}}
+
+/* TRACK */
+#vp{width:100vw;height:100dvh;overflow:hidden;position:relative}
+#track{display:flex;height:100dvh;width:max-content;will-change:transform}
+
+/* PANEL */
+.panel{width:100vw;height:100dvh;flex-shrink:0;position:relative;overflow:hidden}
+
+/* NOISE */
+.noise::after{
+  content:'';position:absolute;inset:0;pointer-events:none;z-index:2;mix-blend-mode:overlay;opacity:.5;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.04'/%3E%3C/svg%3E");
+}
+
+/* STARS */
+.stars{position:absolute;inset:0;overflow:hidden;z-index:0}
+.stars::before,.stars::after{
+  content:'';position:absolute;inset:-50%;
+  background-image:
+    radial-gradient(1px 1px at 12% 22%,rgba(255,255,255,.9) 0%,transparent 100%),
+    radial-gradient(1.2px 1.2px at 78% 8%,rgba(255,255,255,.7) 0%,transparent 100%),
+    radial-gradient(1px 1px at 44% 68%,rgba(255,255,255,.85) 0%,transparent 100%),
+    radial-gradient(1px 1px at 91% 41%,rgba(255,255,255,.6) 0%,transparent 100%),
+    radial-gradient(1.3px 1.3px at 29% 85%,rgba(255,255,255,.75) 0%,transparent 100%),
+    radial-gradient(1px 1px at 63% 17%,rgba(255,255,255,.8) 0%,transparent 100%),
+    radial-gradient(1px 1px at 7% 55%,rgba(255,255,255,.5) 0%,transparent 100%),
+    radial-gradient(1.1px 1.1px at 54% 37%,rgba(255,255,255,.9) 0%,transparent 100%),
+    radial-gradient(1px 1px at 85% 72%,rgba(255,255,255,.65) 0%,transparent 100%),
+    radial-gradient(1px 1px at 38% 48%,rgba(255,255,255,.7) 0%,transparent 100%),
+    radial-gradient(1px 1px at 19% 93%,rgba(255,255,255,.55) 0%,transparent 100%),
+    radial-gradient(1px 1px at 72% 61%,rgba(255,255,255,.8) 0%,transparent 100%);
+  background-size:600px 500px;
+  animation:drift 80s linear infinite;
+}
+.stars::after{animation-duration:120s;animation-direction:reverse;opacity:.5}
+@keyframes drift{from{transform:translate(0,0)}to{transform:translate(-600px,-500px)}}
+
+/* GRID LINES */
+.gridlines{
+  position:absolute;inset:0;z-index:1;pointer-events:none;
+  background-image:linear-gradient(var(--border) 1px,transparent 1px),
+                   linear-gradient(90deg,var(--border) 1px,transparent 1px);
+  background-size:clamp(60px,8vw,120px) clamp(60px,8vw,120px);
+  mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,black 30%,transparent 100%);
+}
+
+/* PLANET */
+.planet-wrap{position:absolute;animation:float 12s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(-50%)}50%{transform:translateY(calc(-50% - 18px))}}
+.planet{
+  border-radius:50%;
+  background:radial-gradient(circle at 32% 28%,#2e1d52 0%,#120d24 45%,#080610 100%);
+  box-shadow:
+    inset -12% -8% 30% rgba(0,0,0,.9),
+    inset 5% 5% 15% rgba(80,50,140,.2),
+    0 0 clamp(40px,8vw,120px) clamp(15px,3vw,50px) rgba(80,40,140,.25),
+    0 0 clamp(80px,15vw,240px) clamp(30px,6vw,100px) rgba(40,15,80,.12);
+}
+.ring{
+  position:absolute;border-radius:50%;
+  border:clamp(1px,.15vw,2px) solid rgba(160,100,220,.18);
+  box-shadow:0 0 20px rgba(160,100,220,.08);
+  animation:ringspin 25s linear infinite;
+}
+@keyframes ringspin{from{transform:rotateX(72deg) rotate(0deg)}to{transform:rotateX(72deg) rotate(360deg)}}
+
+/* GLOW LINE */
+.glow-line{height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);box-shadow:0 0 8px rgba(200,169,110,.35)}
+
+/* STAT CARD */
+.card{
+  border:1px solid var(--border);background:rgba(255,255,255,.025);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  transition:border-color .3s ease,background .3s ease;
+}
+.card:hover{border-color:rgba(200,169,110,.22);background:rgba(200,169,110,.035)}
+
+/* TL DOT */
+.tl-dot{
+  width:clamp(8px,1.1vw,13px);height:clamp(8px,1.1vw,13px);
+  border-radius:50%;border:1.5px solid var(--muted);flex-shrink:0;
+  transition:all .35s ease;cursor:pointer;
+}
+.tl-dot.on{background:var(--accent);border-color:var(--accent);box-shadow:0 0 14px rgba(200,169,110,.5)}
+
+/* PROGRESS */
+#prog{
+  position:fixed;bottom:0;left:0;height:1.5px;
+  background:linear-gradient(90deg,var(--red),var(--accent));
+  z-index:100;transition:width .12s linear;
+  box-shadow:0 0 8px rgba(200,169,110,.3);
+}
+
+/* NAV PIPS */
+.pip{
+  width:6px;height:6px;border-radius:3px;
+  background:var(--muted);
+  transition:width .4s cubic-bezier(.16,1,.3,1),background .3s ease;
+  cursor:none;flex-shrink:0;
+}
+.pip.on{width:20px;background:var(--accent)}
+@media(hover:none){.pip{cursor:pointer}}
+
+/* ANIMATIONS */
+@keyframes slideUp{from{opacity:0;transform:translateY(clamp(20px,3vh,38px))}to{opacity:1;transform:translateY(0)}}
+.anim{animation:slideUp .85s cubic-bezier(.16,1,.3,1) both}
+.d1{animation-delay:.08s}.d2{animation-delay:.22s}.d3{animation-delay:.38s}
+.d4{animation-delay:.54s}.d5{animation-delay:.7s}
+
+/* BUTTONS */
+.btn-p{
+  display:inline-flex;align-items:center;gap:.6em;
+  padding:clamp(.7em,1.5vh,1em) clamp(1.4em,3vw,2em);
+  background:var(--accent);color:#08090d;
+  font-family:'Syne',sans-serif;font-weight:600;
+  font-size:clamp(.68rem,.82vw,.85rem);letter-spacing:.08em;text-transform:uppercase;
+  border:none;cursor:none;
+  clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%);
+  transition:opacity .25s ease,transform .25s ease;
+}
+.btn-p:hover{opacity:.87;transform:translateY(-1px)}
+.btn-g{
+  display:inline-flex;align-items:center;gap:.6em;
+  padding:clamp(.7em,1.5vh,1em) clamp(1.4em,3vw,2em);
+  background:transparent;color:var(--text);
+  font-family:'Syne',sans-serif;font-weight:500;
+  font-size:clamp(.68rem,.82vw,.85rem);letter-spacing:.08em;text-transform:uppercase;
+  border:1px solid var(--border);cursor:none;
+  transition:border-color .25s,color .25s;
+}
+.btn-g:hover{border-color:var(--accent);color:var(--accent)}
+@media(hover:none){.btn-p,.btn-g{cursor:pointer}}
+
+/* BG WORD */
+.bgword{
+  font-family:'Syne',sans-serif;font-weight:800;line-height:.85;
+  color:transparent;-webkit-text-stroke:1px rgba(255,255,255,.04);
+  user-select:none;pointer-events:none;white-space:nowrap;
+}
+
+/* SIZES */
+.hero-t{font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(3rem,8.5vw,11rem);line-height:.9;letter-spacing:-.025em}
+.sec-t{font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(1.9rem,5.2vw,7rem);line-height:.92;letter-spacing:-.02em}
+.serif-lg{font-family:'Cormorant Garamond',serif;font-size:clamp(1.5rem,3.8vw,5rem);line-height:1.1}
+.body-t{font-family:'Syne',sans-serif;font-weight:400;font-size:clamp(.78rem,1.05vw,.98rem);line-height:1.75;color:var(--muted)}
+
+/* HEADER */
+header{
+  position:fixed;top:0;left:0;right:0;z-index:50;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:clamp(.9rem,2.2vh,1.6rem) clamp(1.2rem,4vw,3.5rem);
+  transition:border-color .3s,background .3s,backdrop-filter .3s;
+  border-bottom:1px solid transparent;
+}
+header.scr{border-color:var(--border);background:rgba(8,9,13,.72);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+
+/* PILL */
+.pill{
+  display:inline-flex;align-items:center;gap:.4em;
+  padding:.3em .9em;border:1px solid var(--border);
+  font-family:'Syne',sans-serif;font-weight:500;
+  font-size:clamp(.58rem,.68vw,.72rem);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
+}
+.dot2{width:5px;height:5px;border-radius:50%;background:var(--accent);flex-shrink:0}
+
+/* SWIPE HINT */
+.swipe{
+  position:fixed;bottom:clamp(1.4rem,3.5vh,2.2rem);left:50%;transform:translateX(-50%);
+  z-index:50;display:flex;align-items:center;gap:.6rem;
+  font-family:'Syne',sans-serif;font-weight:400;font-size:.65rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
+  transition:opacity .5s ease;
+}
+.arrow-a{animation:ap 1.4s ease-in-out infinite;color:var(--accent)}
+@keyframes ap{0%,100%{transform:translateX(0);opacity:1}50%{transform:translateX(8px);opacity:.4}}
+
+/* ORBIT RING */
+.orbit{position:absolute;border-radius:50%;border:1px solid rgba(200,169,110,.055)}
+
+/* MOON SHAPE (panel 3) */
+.moon{
+  width:clamp(180px,35vw,480px);height:clamp(180px,35vw,480px);
+  border-radius:50%;
+  background:radial-gradient(circle at 40% 40%,#3a2a5a 0%,#1c1228 50%,#0b0813 100%);
+  box-shadow:inset -8% -6% 20% rgba(0,0,0,.88),0 0 clamp(30px,5vw,80px) clamp(10px,2vw,30px) rgba(100,60,180,.2);
+}
+</style>
+</head>
+
+<body
+  @mousemove="mx=$event.clientX;my=$event.clientY;cv=true"
+  @mouseleave="cv=false"
+  @wheel.prevent="onWheel($event)"
+  @touchstart.passive="ts=$event.touches[0].clientX;ty=$event.touches[0].clientY"
+  @touchmove.prevent="onTouchMove($event)"
+  @touchend.passive="onTouchEnd()"
+  @keydown.window="onKey($event)"
+>
+
+<!-- CURSOR -->
+<div id="cur" :class="{'grow':hovering,'hide':!cv}" :style="`top:${my}px;left:${mx}px`"></div>
+<div id="cur-dot" :style="`top:${my}px;left:${mx}px`"></div>
+
+<!-- PROGRESS -->
+<div id="prog" :style="`width:${pct}%`"></div>
+
+<!-- HEADER -->
+<header :class="{'scr':cp>0}">
+  <div class="flex items-center gap-2.5">
+    <div class="relative w-5 h-5 flex-shrink-0">
+      <div class="absolute inset-0 rounded-full border border-current opacity-25"></div>
+      <div class="absolute top-1/2 left-1/2 w-1.5 h-1.5 rounded-full -translate-x-1/2 -translate-y-1/2" style="background:var(--accent)"></div>
+    </div>
+    <span class="f-display" style="font-size:clamp(.85rem,1.1vw,1rem);letter-spacing:.18em;text-transform:uppercase;">COSMOS</span>
+  </div>
+
+  <nav class="flex items-center gap-2">
+    <template x-for="(n,i) in pn" :key="i">
+      <button class="pip" :class="{'on':cp===i}" :aria-label="n"
+        @click="goTo(i)" @mouseenter="hovering=true" @mouseleave="hovering=false"></button>
+    </template>
+  </nav>
+
+  <span class="f-label" style="color:var(--muted);font-size:.62rem;">
+    <span x-text="String(cp+1).padStart(2,'0')"></span>
+    <span style="color:var(--accent);margin:0 .3em">/</span>
+    <span x-text="String(pn.length).padStart(2,'0')"></span>
+  </span>
+</header>
+
+<!-- SWIPE HINT -->
+<div class="swipe" :style="`opacity:${cp===0?1:0}`">
+  <span>Desliza</span>
+  <span class="arrow-a">→</span>
+</div>
+
+<!-- TRACK -->
+<div id="vp">
+<div id="track" :style="`transform:translateX(-${ro}px)`">
+
+
+<!-- ══════════════════ P1 HERO ══════════════════ -->
+<section class="panel noise" style="background:var(--bg)">
+  <div class="stars"></div>
+  <div class="gridlines"></div>
+  <div class="orbit" style="width:65vmax;height:65vmax;top:50%;left:50%;transform:translate(-50%,-50%)"></div>
+  <div class="orbit" style="width:85vmax;height:85vmax;top:50%;left:50%;transform:translate(-50%,-50%);opacity:.5"></div>
+
+  <!-- Planet -->
+  <div class="planet-wrap" style="right:clamp(-100px,-6vw,0px);top:50%">
+    <div class="planet" style="width:clamp(200px,32vw,560px);height:clamp(200px,32vw,560px)">
+      <div class="ring" style="inset:clamp(-25px,-4vw,-70px)"></div>
+      <div class="ring" style="inset:clamp(-45px,-7vw,-110px);opacity:.35;animation-duration:34s;animation-direction:reverse"></div>
+    </div>
+  </div>
+
+  <div class="relative z-10 flex flex-col justify-center h-full"
+       style="padding:clamp(4.5rem,11vh,8.5rem) clamp(1.5rem,7vw,6rem) clamp(2rem,6vh,4rem)">
+
+    <div class="anim d1">
+      <div class="pill mb-4 sm:mb-6"><span class="dot2"></span><span>Misión Activa — 2025</span></div>
+    </div>
+
+    <h1 class="hero-t anim d2">
+      MÁS ALLÁ<br>
+      <em class="f-serif" style="font-weight:300;font-style:italic;color:var(--accent);font-size:clamp(2.6rem,7.5vw,9.5rem)">del límite</em><br>
+      CONOCIDO
+    </h1>
+
+    <p class="body-t anim d3 mt-4" style="max-width:clamp(240px,32vw,400px)">
+      Una odisea visual a través del cosmos. Desde los primeros pasos en la Luna hasta los confines del sistema solar — exploración sin fronteras.
+    </p>
+
+    <div class="flex flex-wrap gap-3 mt-6 sm:mt-10 anim d4">
+      <button class="btn-p" @click="goTo(1)" @mouseenter="hovering=true" @mouseleave="hovering=false">
+        Explorar misión <span>→</span>
+      </button>
+      <button class="btn-g" @click="goTo(4)" @mouseenter="hovering=true" @mouseleave="hovering=false">
+        Ver cronología
+      </button>
+    </div>
+
+    <div class="hidden md:flex items-center gap-3 mt-auto anim d5" style="opacity:.5">
+      <div style="width:clamp(30px,3vw,48px);height:1px;background:var(--muted)"></div>
+      <span class="f-label" style="color:var(--muted)">Scroll horizontal</span>
+    </div>
+  </div>
+</section>
+
+
+<!-- ══════════════════ P2 STATS ══════════════════ -->
+<section class="panel noise" style="background:#080a10">
+  <div class="stars" style="opacity:.35"></div>
+  <div class="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none z-0">
+    <span class="bgword" style="font-size:clamp(8rem,24vw,34rem)">DATA</span>
+  </div>
+
+  <div class="relative z-10 flex flex-col justify-center h-full"
+       style="padding:clamp(4.5rem,11vh,8.5rem) clamp(1.5rem,7vw,6rem)">
+
+    <div class="anim d1"><div class="pill mb-5 sm:mb-7"><span class="dot2"></span><span>Datos de misión</span></div></div>
+
+    <h2 class="sec-t anim d2 mb-6 sm:mb-10" style="max-width:10ch">
+      CIFRAS<br>DEL<br><span style="color:var(--accent)">COSMOS</span>
+    </h2>
+
+    <!-- 3-col grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 anim d3" style="border:1px solid var(--border)">
+      <div class="card flex flex-col justify-between p-5 sm:p-7 gap-4">
+        <span class="f-label" style="color:var(--muted)">Km promedio<br>Tierra – Júpiter</span>
+        <div>
+          <div class="f-display" style="font-size:clamp(2.2rem,4.5vw,5.2rem);color:var(--accent);line-height:1" x-text="c1+'M'"></div>
+          <div class="glow-line mt-3" style="width:38%"></div>
+        </div>
+      </div>
+      <div class="card flex flex-col justify-between p-5 sm:p-7 gap-4" style="border-left:1px solid var(--border);border-top:1px solid var(--border);sm:border-top :none">
+        <span class="f-label" style="color:var(--muted)">Misiones<br>completadas</span>
+        <div>
+          <div class="f-display" style="font-size:clamp(2.2rem,4.5vw,5.2rem);color:var(--text);line-height:1" x-text="c2"></div>
+          <div class="glow-line mt-3" style="width:38%;background:linear-gradient(90deg,transparent,var(--text),transparent);box-shadow:none"></div>
+        </div>
+      </div>
+      <div class="card flex flex-col justify-between p-5 sm:p-7 gap-4" style="border-left:1px solid var(--border);border-top:1px solid var(--border);sm:border-top:none">
+        <span class="f-label" style="color:var(--muted)">Años luz al<br>borde observable</span>
+        <div>
+          <div class="f-display" style="font-size:clamp(2.2rem,4.5vw,5.2rem);color:var(--red);line-height:1" x-text="c3+'B'"></div>
+          <div class="glow-line mt-3" style="width:38%;background:linear-gradient(90deg,transparent,var(--red),transparent);box-shadow:0 0 8px rgba(184,68,51,.4)"></div>
+        </div>
+      </div>
+    </div>
+
+    <p class="body-t anim d4 mt-5" style="max-width:clamp(260px,38vw,460px)">
+      Cada número representa décadas de exploración, ingenio humano y la voluntad inquebrantable de entender nuestro lugar en el universo.
+    </p>
+  </div>
+</section>
+
+
+<!-- ══════════════════ P3 EDITORIAL ══════════════════ -->
+<section class="panel" style="background:var(--surface)">
+  <div class="gridlines" style="opacity:.3"></div>
+
+  <div class="relative z-10 grid grid-cols-1 md:grid-cols-2 h-full">
+
+    <!-- Left image col — hidden on mobile -->
+    <div class="hidden md:flex flex-col justify-end relative overflow-hidden"
+         style="background:radial-gradient(ellipse 100% 120% at 50% 80%,#1a0d30 0%,#0a0910 100%)">
+      <div class="stars"></div>
+      <!-- Moon -->
+      <div class="absolute top-1/2 left-1/2 moon" style="transform:translate(-50%,-55%)">
+        <div style="position:absolute;inset:0;border-radius:50%;background:repeating-linear-gradient(-35deg,transparent,transparent 40px,rgba(255,255,255,.015) 40px,rgba(255,255,255,.015) 41px)"></div>
+      </div>
+      <!-- Gradient overlay bottom -->
+      <div class="absolute bottom-0 left-0 right-0 h-1/3" style="background:linear-gradient(to top,#0a0910,transparent)"></div>
+      <div class="relative z-10 p-8 pb-10">
+        <div class="pill mb-4"><span class="dot2"></span><span>Programa Artemis</span></div>
+        <p class="f-serif" style="font-size:clamp(.9rem,1.4vw,1.25rem);color:var(--muted);font-style:italic;line-height:1.65">
+          "La Luna no es un destino final, es el primer peldaño hacia un futuro interplanetario."
+        </p>
+        <p class="f-label mt-3" style="color:var(--accent)">— Dr. Elena Vargas, NASA JPL</p>
+      </div>
+    </div>
+
+    <!-- Right text col -->
+    <div class="flex flex-col justify-center"
+         style="padding:clamp(4.5rem,11vh,8.5rem) clamp(1.5rem,5vw,4rem)">
+      <div class="anim d1"><div class="pill mb-5"><span class="dot2"></span><span>Artículo destacado</span></div></div>
+
+      <h2 class="sec-t anim d2" style="max-width:9ch">
+        LA LUNA<br>COMO<br>
+        <em class="f-serif" style="font-size:clamp(1.8rem,5vw,6.2rem);color:var(--accent);font-style:italic;font-weight:300">base</em>
+      </h2>
+
+      <div class="glow-line anim d3 mt-4 mb-5" style="width:clamp(36px,5vw,72px)"></div>
+
+      <p class="body-t anim d3" style="max-width:clamp(260px,30vw,380px)">
+        El Programa Artemis marca el inicio de una nueva era. En 2030, el primer hábitat lunar permanente estará operativo, redefiniendo lo que significa vivir fuera de la Tierra.
+      </p>
+
+      <div class="mt-5 grid grid-cols-2 gap-2.5 anim d4" style="max-width:clamp(260px,30vw,380px)">
+        <div class="card p-4 sm:p-5">
+          <div class="f-display" style="font-size:clamp(1.5rem,2.3vw,2.7rem);color:var(--accent)">−173°</div>
+          <span class="f-label" style="color:var(--muted);font-size:.58rem">Noche lunar</span>
+        </div>
+        <div class="card p-4 sm:p-5">
+          <div class="f-display" style="font-size:clamp(1.5rem,2.3vw,2.7rem);color:var(--red)">+127°</div>
+          <span class="f-label" style="color:var(--muted);font-size:.58rem">Día lunar</span>
+        </div>
+      </div>
+
+      <!-- Quote mobile only -->
+      <div class="md:hidden mt-6 p-4 anim d5" style="border-left:2px solid var(--accent)">
+        <p class="f-serif" style="font-size:1rem;color:var(--muted);font-style:italic;line-height:1.65">
+          "La Luna es el primer peldaño hacia un futuro interplanetario."
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ══════════════════ P4 MISSIONS ══════════════════ -->
+<section class="panel noise" style="background:#060810">
+  <div class="stars" style="opacity:.28"></div>
+
+  <div class="relative z-10 flex flex-col justify-center h-full"
+       style="padding:clamp(4.5rem,11vh,8.5rem) clamp(1.5rem,7vw,6rem)">
+
+    <div class="flex flex-wrap items-end justify-between gap-4 mb-6 sm:mb-10">
+      <div>
+        <div class="anim d1"><div class="pill mb-3"><span class="dot2"></span><span>Misiones activas</span></div></div>
+        <h2 class="sec-t anim d2" style="max-width:12ch">
+          EXPLORACIÓN<br><span style="color:var(--accent)">ACTIVA</span>
+        </h2>
+      </div>
+      <p class="body-t anim d3" style="max-width:clamp(200px,26vw,310px)">
+        Cuatro misiones simultáneas expanden los límites del conocimiento humano en tiempo real.
+      </p>
+    </div>
+
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 anim d4">
+      <template x-for="(m,i) in ms" :key="i">
+        <div class="card flex flex-col justify-between gap-4"
+             style="padding:clamp(.9rem,1.5vw,1.6rem);min-height:clamp(110px,16vh,200px)"
+             @mouseenter="hovering=true" @mouseleave="hovering=false">
+          <div class="flex items-center justify-between">
+            <span class="f-label" style="color:var(--accent);font-size:.57rem" x-text="m.tag"></span>
+            <div class="flex items-center gap-1.5">
+              <div class="w-1.5 h-1.5 rounded-full" style="background:var(--accent);box-shadow:0 0 6px var(--accent)"></div>
+              <span class="f-label" style="font-size:.55rem;color:var(--muted)">LIVE</span>
+            </div>
+          </div>
+          <div>
+            <div class="f-display" style="font-size:clamp(1.1rem,1.8vw,1.85rem);line-height:1.15;margin-bottom:.35em" x-text="m.name"></div>
+            <div class="body-t" style="font-size:clamp(.63rem,.72vw,.76rem)" x-text="m.desc"></div>
+          </div>
+          <div style="height:2px;background:var(--border);border-radius:1px">
+            <div :style="`width:${m.pct}%;height:100%;background:var(--accent);border-radius:1px;transition:width 1.4s ${i*0.15}s cubic-bezier(.16,1,.3,1)`"
+                 x-init="$el.style.width='0';setTimeout(()=>$el.style.width=m.pct+'%',700)"></div>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>
+</section>
+
+
+<!-- ══════════════════ P5 TIMELINE ══════════════════ -->
+<section class="panel noise" style="background:#07080d">
+  <div class="stars" style="opacity:.32"></div>
+  <div class="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
+    <span class="bgword" style="font-size:clamp(9rem,28vw,40rem);transition:all .4s ease" x-text="tl[at].year"></span>
+  </div>
+
+  <div class="relative z-10 flex flex-col justify-center h-full"
+       style="padding:clamp(4.5rem,11vh,8.5rem) clamp(1.5rem,7vw,6rem)">
+    <div class="anim d1"><div class="pill mb-5"><span class="dot2"></span><span>Hitos históricos</span></div></div>
+    <h2 class="sec-t anim d2 mb-7 sm:mb-12" style="max-width:8ch">
+      LÍNEA<br>DEL<br><span style="color:var(--accent)">TIEMPO</span>
+    </h2>
+
+    <div class="relative anim d3">
+      <!-- Line -->
+      <div class="absolute" style="top:clamp(4px,.6vw,7px);left:0;right:0;height:1px;background:var(--border)"></div>
+      <!-- Items — scrollable on mobile -->
+      <div class="flex overflow-x-auto sm:overflow-x-visible pb-4 sm:pb-0" style="-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:0">
+        <template x-for="(item,i) in tl" :key="i">
+          <div class="flex-shrink-0 sm:flex-1 relative pt-5 sm:pt-7 pr-5 sm:pr-0"
+               style="min-width:clamp(130px,18vw,210px);padding-right:clamp(1rem,2vw,2rem)"
+               @mouseenter="at=i;hovering=true" @mouseleave="hovering=false" @click="at=i">
+            <div class="tl-dot" :class="{'on':at===i}"></div>
+            <div class="mt-3">
+              <div class="f-display" style="font-size:clamp(1.3rem,2.2vw,2.8rem);color:var(--accent)" x-text="item.year"></div>
+              <div class="f-ui mt-1" style="font-size:clamp(.68rem,.85vw,.92rem)" x-text="item.title"></div>
+              <p class="body-t mt-2 overflow-hidden" style="font-size:clamp(.62rem,.72vw,.78rem);max-width:185px;transition:max-height .45s ease,opacity .35s ease"
+                 :style="at===i?'max-height:100px;opacity:1':'max-height:0;opacity:0'"
+                 x-text="item.desc"></p>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ══════════════════ P6 CTA ══════════════════ -->
+<section class="panel noise" style="background:var(--bg)">
+  <div class="stars"></div>
+  <div class="gridlines"></div>
+  <div class="absolute inset-0 pointer-events-none" style="background:radial-gradient(ellipse 60% 50% at 50% 50%,rgba(200,169,110,.055) 0%,transparent 68%)"></div>
+  <div class="orbit" style="width:clamp(280px,52vw,760px);height:clamp(280px,52vw,760px);top:50%;left:50%;transform:translate(-50%,-50%)"></div>
+  <div class="orbit" style="width:clamp(160px,33vw,480px);height:clamp(160px,33vw,480px);top:50%;left:50%;transform:translate(-50%,-50%);opacity:.55"></div>
+
+  <div class="relative z-10 flex flex-col items-center justify-center h-full text-center"
+       style="padding:clamp(4.5rem,11vh,8.5rem) clamp(1.5rem,7vw,6rem)">
+    <div class="anim d1"><div class="pill mb-6"><span class="dot2"></span><span>Únete a la misión</span></div></div>
+
+    <h2 class="hero-t anim d2" style="max-width:9ch">
+      TU PRÓXIMA<br>
+      <em class="f-serif" style="font-weight:300;font-style:italic;color:var(--accent);font-size:clamp(2.6rem,7.5vw,9.5rem)">misión</em><br>
+      COMIENZA
+    </h2>
+
+    <p class="body-t anim d3 mt-5" style="max-width:clamp(250px,30vw,400px)">
+      Forma parte de la nueva generación de exploradores. El universo no espera — y tampoco deberías hacerlo tú.
+    </p>
+
+    <div class="flex flex-wrap gap-3 mt-8 justify-center anim d4">
+      <button class="btn-p" @mouseenter="hovering=true" @mouseleave="hovering=false">Comenzar ahora <span>→</span></button>
+      <button class="btn-g" @click="goTo(0)" @mouseenter="hovering=true" @mouseleave="hovering=false">← Volver al inicio</button>
+    </div>
+
+    <div class="flex gap-5 sm:gap-8 mt-10 anim d5">
+      <template x-for="s in ['Twitter','Instagram','YouTube','LinkedIn']" :key="s">
+        <span class="f-label" style="color:var(--muted);cursor:none;transition:color .2s"
+          @mouseenter="hovering=true;$el.style.color='var(--accent)'"
+          @mouseleave="hovering=false;$el.style.color='var(--muted)'"
+          x-text="s"></span>
+      </template>
+    </div>
+
+    <div class="absolute bottom-5">
+      <span class="f-label" style="color:var(--muted);font-size:.57rem;opacity:.4">© 2025 COSMOS — Exploración sin límites</span>
+    </div>
+  </div>
+</section>
+
+
+</div><!-- /track -->
+</div><!-- /vp -->
+
+<script>
+function cosmos(){return{
+  // cursor
+  mx:0,my:0,cv:true,hovering:false,
+
+  // panels
+  cp:0,
+  pn:['Inicio','Datos','Luna','Misiones','Historia','Contacto'],
+
+  // scroll
+  offset:0,to:0,ro:0,pct:0,
+
+  // touch
+  ts:0,ty:0,
+
+  // timeline
+  at:0,
+  tl:[
+    {year:'1961',title:'Vostok 1',    desc:'Yuri Gagarin orbita la Tierra en 108 minutos, convirtiéndose en el primer ser humano en el espacio.'},
+    {year:'1969',title:'Apollo 11',   desc:'Neil Armstrong pisa la Luna. "Un pequeño paso para el hombre, un salto gigante para la humanidad."'},
+    {year:'1977',title:'Voyager 1',   desc:'Lanzada hacia los límites del sistema solar, hoy es el objeto fabricado más lejano de la Tierra.'},
+    {year:'1990',title:'Hubble',      desc:'El telescopio espacial Hubble entra en órbita y revela el cosmos con una nitidez sin precedentes.'},
+    {year:'2004',title:'Mars Rovers', desc:'Spirit y Opportunity confirman la presencia histórica de agua líquida en el planeta rojo.'},
+    {year:'2023',title:'Artemis II',  desc:'Primera tripulación en orbitar la Luna en 50 años, preparando el retorno humano permanente.'},
+  ],
+
+  // missions
+  ms:[
+    {tag:'DEEP SPACE', name:'Voyager 1',    desc:'Explorando el espacio interestelar',       pct:96},
+    {tag:'MARS OPS',   name:'Perseverance', desc:'Recolectando muestras marcianas',          pct:74},
+    {tag:'LUNAR',      name:'Artemis III',  desc:'Preparando el retorno a la Luna',          pct:41},
+    {tag:'SOLAR',      name:'Parker Probe', desc:'Acercándose más que nunca al Sol',         pct:88},
+  ],
+
+  // counters
+  c1:0,c2:0,c3:0,
+
+  init(){
+    this.smoothLoop();
+    this.animCounters();
+    window.addEventListener('resize',()=>{
+      this.to=Math.min(this.to,this.maxOff());
+      this.offset=Math.min(this.offset,this.maxOff());
+    });
+  },
+
+  onWheel(e){
+    const d=Math.abs(e.deltaY)>Math.abs(e.deltaX)?e.deltaY:e.deltaX;
+    this.to=Math.max(0,Math.min(this.to+d*1.25,this.maxOff()));
+    this.syncPanel();
+  },
+
+  onTouchMove(e){
+    const dx=this.ts-e.touches[0].clientX;
+    const dy=this.ty-e.touches[0].clientY;
+    if(Math.abs(dx)<Math.abs(dy))return;
+    this.to=Math.max(0,Math.min(this.to+dx*1.6,this.maxOff()));
+    this.ts=e.touches[0].clientX;
+    this.ty=e.touches[0].clientY;
+    this.syncPanel();
+  },
+
+  onTouchEnd(){
+    this.goTo(Math.round(this.to/window.innerWidth));
+  },
+
+  onKey(e){
+    if(e.key==='ArrowRight'||e.key==='ArrowDown') this.goTo(Math.min(this.cp+1,this.pn.length-1));
+    if(e.key==='ArrowLeft' ||e.key==='ArrowUp')   this.goTo(Math.max(this.cp-1,0));
+  },
+
+  goTo(i){
+    i=Math.max(0,Math.min(i,this.pn.length-1));
+    this.cp=i;
+    this.to=i*window.innerWidth;
+    this.pct=this.pn.length>1?(this.to/this.maxOff())*100:0;
+  },
+
+  maxOff(){return(this.pn.length-1)*window.innerWidth},
+
+  syncPanel(){
+    const s=Math.round(this.to/window.innerWidth);
+    this.cp=Math.max(0,Math.min(s,this.pn.length-1));
+    this.pct=this.maxOff()>0?(this.to/this.maxOff())*100:0;
+  },
+
+  smoothLoop(){
+    const loop=()=>{
+      this.ro+=(this.to-this.ro)*0.09;
+      if(Math.abs(this.ro-this.to)<0.04)this.ro=this.to;
+      requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
+  },
+
+  animCounters(){
+    const t=[628,247,46],dur=2000,s=Date.now();
+    const tick=()=>{
+      const x=Math.min((Date.now()-s)/dur,1);
+      const e=1-Math.pow(1-x,4);
+      this.c1=Math.round(t[0]*e);this.c2=Math.round(t[1]*e);this.c3=Math.round(t[2]*e);
+      if(x<1)requestAnimationFrame(tick);
+    };
+    setTimeout(()=>requestAnimationFrame(tick),350);
+  },
+}}
+</script>
+</body>
+</html>
