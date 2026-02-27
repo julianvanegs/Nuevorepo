@@ -1,4 +1,5 @@
 
 
 
-print ("MULTIPLICACION")
+
+print ("DIVISION")
